@@ -1,0 +1,44 @@
+name: Flask CI/CD
+
+on:
+  push:
+    branches: [ "main", "staging" ]
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run tests
+      run: pytest
+
+    - name: Build
+      if: success()
+      run: echo "Build successful!"
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to staging
+      run: echo "Deploying to staging..."
+
+  deploy-production:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to production
+      run: echo "Deploying to production..."
