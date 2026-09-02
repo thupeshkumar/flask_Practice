@@ -1,3 +1,23 @@
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    env:
+      STAGING_DEPLOY_PATH: /opt/flask-practice/staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Deploy to staging via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd $STAGING_DEPLOY_PATH || mkdir -p $STAGING_DEPLOY_PATH
+            git pull https://github.com/<your-username>/flask_Practice.git main || git clone https://github.com/<your-username>/flask_Practice.git .
+            chmod +x deploy.sh
+            ./deploy.sh
+
   deploy-production:
     runs-on: ubuntu-latest
     env:
