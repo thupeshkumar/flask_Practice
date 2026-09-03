@@ -1,10 +1,10 @@
 pipeline {
     agent any
 
-       environment {
-        MONGO_URI = 'app.config["MONGO_URI"] = "mongodb://root:password@localhost:27017/student_db?authSource=admin"
-      }
-    
+    environment {
+        MONGO_URI = 'mongodb://root:password@localhost:27017/student_db?authSource=admin'
+    }
+
     stages {
         stage('Build') {
             steps {
@@ -17,14 +17,14 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                bat 'venv\\Scripts\\python -m pytest'
+                bat "set MONGO_URI=${env.MONGO_URI} && venv\\Scripts\\python -m pytest"
             }
         }
 
         stage('Deploy') {
             steps {
                 echo 'Deploying to staging...'
-                bat 'start /B venv\\Scripts\\python app.py'
+                bat "set MONGO_URI=${env.MONGO_URI} && start /B venv\\Scripts\\python app.py"
             }
         }
     }
