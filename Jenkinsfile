@@ -14,8 +14,10 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                sh 'echo Deploying to staging...'
-                // Add deployment script here
+                sh '''
+                chmod +x deploy.sh
+                ./deploy.sh
+                '''
             }
         }
     }

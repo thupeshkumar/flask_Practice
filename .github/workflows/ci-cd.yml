@@ -28,13 +28,24 @@ jobs:
     - name: Build
       if: success()
       run: echo "Build successful!"
-
   deploy-staging:
     if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
-    - name: Deploy to staging
-      run: echo "Deploying to staging..."
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to staging via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /var/www/flaskapp || mkdir -p /var/www/flaskapp
+            git pull https://github.com/<your-username>/flask_Practice.git main || git clone https://github.com/<your-username>/flask_Practice.git .
+            chmod +x deploy.sh
+            ./deploy.sh
 
   deploy-production:
     if: github.event_name == 'release'
