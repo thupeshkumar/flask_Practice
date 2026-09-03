@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
-import certifi
+#import certifi
 import os
 
 # Load env vars
