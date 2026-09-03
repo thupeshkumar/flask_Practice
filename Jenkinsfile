@@ -1,49 +1,48 @@
 pipeline {
     agent any
 
+       environment {
+        MONGO_URI = 'app.config["MONGO_URI"] = "mongodb://root:password@localhost:27017/student_db?authSource=admin"
+        SECRET_KEY = 'mysecretkey'
+    }
+    
     stages {
         stage('Build') {
             steps {
-                sh '''
-                python3 -m venv venv
-                venv/bin/pip install --upgrade pip
-                venv/bin/pip install -r requirements.txt
-                '''
+                echo 'Installing dependencies...'
+                bat 'python -m venv venv'
+                bat 'venv\\Scripts\\pip install -r requirements.txt'
             }
         }
 
         stage('Test') {
             steps {
-                sh '''
-                venv/bin/pytest -v
-                '''
+                echo 'Running unit tests...'
+                bat 'venv\\Scripts\\python -m pytest'
             }
         }
 
         stage('Deploy') {
             steps {
-                sh '''
-                chmod +x deploy.sh
-                ./deploy.sh
-                '''
+                echo 'Deploying to staging...'
+                bat 'start /B venv\\Scripts\\python app.py'
             }
         }
     }
 
-    triggers {
-        githubPush()
-    }
-
     post {
         success {
+            echo 'Pipeline completed successfully.'
             mail to: 'thupesh@gmail.com',
-                 subject: "SUCCESS: Build #${env.BUILD_NUMBER}",
-                 body: "The build succeeded!"
+                 subject: 'Jenkins Pipeline Success',
+                 body: 'Build, test and deployment completed successfully.'
         }
+
         failure {
+            echo 'Pipeline failed.'
             mail to: 'thupesh@gmail.com',
-                 subject: "FAILURE: Build #${env.BUILD_NUMBER}",
-                 body: "The build failed!"
+                 subject: 'Jenkins Pipeline Failed',
+                 body: 'Jenkins pipeline failed. Please check console output.'
         }
     }
 }
