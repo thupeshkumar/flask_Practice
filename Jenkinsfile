@@ -2,54 +2,53 @@ pipeline {
     agent any
 
     environment {
-        MONGO_URI = 'mongodb://root:password@localhost:27017/student_db?authSource=admin'
-    }
+        MONGO_URI = 'mongodb://localhost:27017/test_student_db'
+    }  
 
     stages {
         stage('Build') {
             steps {
-                echo 'Installing dependencies...'
-                sh '''
-                python3 -m venv venv
-                venv/bin/pip install -r requirements.txt
-                '''
+                sh 'pip3 install -r requirements.txt'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running unit tests...'
-                sh '''
-                export MONGO_URI=${MONGO_URI}
-                venv/bin/python -m pytest -v
-                '''
+                sh 'python3 -m pytest'
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploying to staging...'
-                sh '''
-                export MONGO_URI=${MONGO_URI}
-                nohup venv/bin/python app.py &
-                '''
-            }
+                    sh '''
+                    mkdir -p /opt/staging
+                    cp -rf * /opt/staging/
+                    echo "Application deployed to staging."
+                    '''
+                }
         }
     }
 
     post {
-        success {
-            echo 'Pipeline completed successfully.'
-            mail to: 'thupesh@gmail.com',
-                 subject: 'Jenkins Pipeline Success',
-                 body: 'Build, test and deployment completed successfully.'
-        }
-
-        failure {
-            echo 'Pipeline failed.'
-            mail to: 'thupesh@gmail.com',
-                 subject: 'Jenkins Pipeline Failed',
-                 body: 'Jenkins pipeline failed. Please check console output.'
+    success {
+        catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+            emailext(
+                to: 'thupesh@gmail.com',
+                subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Build completed successfully."
+            )
         }
     }
+
+    failure {
+        catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+            emailext(
+                to: 'thupesh@gmail.com',
+                subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Build failed."
+            )
+        }
+    }
+}
+    
 }
