@@ -3,8 +3,7 @@ pipeline {
 
        environment {
         MONGO_URI = 'app.config["MONGO_URI"] = "mongodb://root:password@localhost:27017/student_db?authSource=admin"
-        SECRET_KEY = 'mysecretkey'
-    }
+      }
     
     stages {
         stage('Build') {
