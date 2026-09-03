@@ -9,22 +9,30 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Installing dependencies...'
-                bat 'python -m venv venv'
-                bat 'venv\\Scripts\\pip install -r requirements.txt'
+                sh '''
+                python3 -m venv venv
+                venv/bin/pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                bat "set MONGO_URI=${env.MONGO_URI} && venv\\Scripts\\python -m pytest"
+                sh '''
+                export MONGO_URI=${MONGO_URI}
+                venv/bin/python -m pytest -v
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
                 echo 'Deploying to staging...'
-                bat "set MONGO_URI=${env.MONGO_URI} && start /B venv\\Scripts\\python app.py"
+                sh '''
+                export MONGO_URI=${MONGO_URI}
+                nohup venv/bin/python app.py &
+                '''
             }
         }
     }
