@@ -11,7 +11,7 @@ This document explains the two CI/CD pipelines set up for this repository:
 ## 1. Jenkins CI/CD Pipeline
 
 ### Prerequisites
-- A Linux VM (Ubuntu 22.04 recommended) or a cloud Jenkins service (e.g. an
+- A Linux VM (Ubuntu 24.04 recommended) or a cloud Jenkins service (e.g. an
   EC2/Azure VM, or a managed Jenkins offering).
 - Java 17 (required by modern Jenkins).
 - Python 3.10+ and `pip` installed on the Jenkins agent that will run builds.
