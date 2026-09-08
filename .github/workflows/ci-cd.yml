@@ -1,0 +1,136 @@
+name: Flask CI/CD
+
+on:
+  push:
+    branches: [ "main", "staging" ]
+  pull_request:
+    branches: [ "main", "staging" ]
+  release:
+    types: [ "published" ]
+
+jobs:
+
+  install-and-test:
+    name: Install Dependencies & Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        env:
+          TESTING: "1"
+        run: |
+          pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+  build:
+    name: Build
+    needs: install-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Package application
+        run: |
+          mkdir -p dist
+          zip -r dist/flask_practice.zip . -x "venv/*" ".git/*" "dist/*"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flask-app-build
+          path: dist/flask_practice.zip
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: flask-app-build
+
+      - name: Deploy to staging server
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          echo "Deploying flask_practice.zip to staging host ${STAGING_HOST}"
+          mkdir -p ~/.ssh
+          echo "${STAGING_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key flask_practice.zip \
+            "${STAGING_USER}@${STAGING_HOST}:/opt/staging/"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${STAGING_USER}@${STAGING_HOST}" \
+            "cd /opt/staging && unzip -o flask_practice.zip -d flask_practice && \
+             cd flask_practice && pip install -r requirements.txt && \
+             (pkill -f 'app.py' || true) && nohup python3 app.py > staging.log 2>&1 &"
+
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: flask-app-build
+
+      - name: Deploy to production server
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        run: |
+          echo "Deploying release ${{ github.event.release.tag_name }} to production host ${PROD_HOST}"
+          mkdir -p ~/.ssh
+          echo "${PROD_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key flask_practice.zip \
+            "${PROD_USER}@${PROD_HOST}:/opt/production/"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${PROD_USER}@${PROD_HOST}" \
+            "cd /opt/production && unzip -o flask_practice.zip -d flask_practice && \
+             cd flask_practice && pip install -r requirements.txt && \
+             (pkill -f 'app.py' || true) && nohup python3 app.py > production.log 2>&1 &"
