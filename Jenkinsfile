@@ -1,11 +1,15 @@
 pipeline {
     agent any
 
+    environment {
+        // Inject Jenkins credentials (ID = mongodb-atlas-creds)
+        MONGO_CREDS = credentials('mongodb-atlas-creds')
+    }
+
     stages {
         stage('Build') {
             steps {
                 echo 'Installing dependencies...'
-                // Create virtual environment and install requirements
                 sh 'python3 -m venv venv'
                 sh './venv/bin/pip install -r requirements.txt'
             }
@@ -14,34 +18,36 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                // Run pytest inside the virtual environment
                 sh './venv/bin/python -m pytest'
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploying Flask app...'
-                // Start the Flask app (replace with your deployment script)
-                sh 'nohup ./venv/bin/python app.py &'
+                echo "Deploying Flask app with MongoDB Atlas..."
+                script {
+                    // Construct MongoDB URI using injected credentials
+                    def mongoUri = "mongodb+srv://${MONGO_CREDS_USR}:${MONGO_CREDS_PSW}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
+
+                    // Export URI so Flask app can read it
+                    sh """
+                    export MONGO_URI=${mongoUri}
+                    nohup ./venv/bin/python app.py &
+                    """
+                }
             }
         }
-    }
-
-    triggers {
-        // Trigger pipeline on every push to GitHub main branch
-        githubPush()
     }
 
     post {
         success {
             mail to: 'thupesh@gmail.com',
-                 subject: "Jenkins Pipeline Success",
-                 body: "Build, test, and deployment completed successfully."
+                 subject: "Pipeline Success",
+                 body: "Build, test, and deploy completed successfully."
         }
         failure {
             mail to: 'thupesh@gmail.com',
-                 subject: "Jenkins Pipeline Failed",
+                 subject: "Pipeline Failed",
                  body: "Pipeline failed. Please check Jenkins console output."
         }
     }
