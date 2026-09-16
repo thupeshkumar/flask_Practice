@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        // Inject Jenkins credentials (ID = mongodb-atlas-creds)
-        MONGO_CREDS = credentials('mongodb-atlas-creds')
-    }
-
     stages {
         stage('Build') {
             steps {
@@ -18,15 +13,13 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                script {
-                    // Construct MongoDB URI using injected credentials
-                    def mongoUri = "mongodb+srv://${MONGO_CREDS_USR}:${MONGO_CREDS_PSW}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
-
-                    // Export URI before running pytest
-                    sh """
-                    export MONGO_URI=${mongoUri}
+                withCredentials([usernamePassword(credentialsId: 'mongodb-atlas-creds',
+                                                  usernameVariable: 'MONGO_USER',
+                                                  passwordVariable: 'MONGO_PASS')]) {
+                    sh '''
+                    export MONGO_URI="mongodb+srv://${MONGO_USER}:${MONGO_PASS}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
                     ./venv/bin/python -m pytest
-                    """
+                    '''
                 }
             }
         }
@@ -34,15 +27,13 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo "Deploying Flask app with MongoDB Atlas..."
-                script {
-                    // Construct MongoDB URI again for deployment
-                    def mongoUri = "mongodb+srv://${MONGO_CREDS_USR}:${MONGO_CREDS_PSW}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
-
-                    // Export URI so Flask app can read it
-                    sh """
-                    export MONGO_URI=${mongoUri}
+                withCredentials([usernamePassword(credentialsId: 'mongodb-atlas-creds',
+                                                  usernameVariable: 'MONGO_USER',
+                                                  passwordVariable: 'MONGO_PASS')]) {
+                    sh '''
+                    export MONGO_URI="mongodb+srv://${MONGO_USER}:${MONGO_PASS}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
                     nohup ./venv/bin/python app.py &
-                    """
+                    '''
                 }
             }
         }
