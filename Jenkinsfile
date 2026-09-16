@@ -18,7 +18,16 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                sh './venv/bin/python -m pytest'
+                script {
+                    // Construct MongoDB URI using injected credentials
+                    def mongoUri = "mongodb+srv://${MONGO_CREDS_USR}:${MONGO_CREDS_PSW}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
+
+                    // Export URI before running pytest
+                    sh """
+                    export MONGO_URI=${mongoUri}
+                    ./venv/bin/python -m pytest
+                    """
+                }
             }
         }
 
@@ -26,7 +35,7 @@ pipeline {
             steps {
                 echo "Deploying Flask app with MongoDB Atlas..."
                 script {
-                    // Construct MongoDB URI using injected credentials
+                    // Construct MongoDB URI again for deployment
                     def mongoUri = "mongodb+srv://${MONGO_CREDS_USR}:${MONGO_CREDS_PSW}@studentdb.tetcnkr.mongodb.net/StudentDB?retryWrites=true&w=majority"
 
                     // Export URI so Flask app can read it
